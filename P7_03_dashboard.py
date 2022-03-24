@@ -28,6 +28,7 @@ model_trainig = st.container()
 model_explainer = st.container()
 similar_clients = st.container()
 
+
 # Load the joblib model LR
 model_LR = joblib.load(open("models//LR_pipeline.joblib", "rb"))
 # Load the joblib model KNN
@@ -36,7 +37,7 @@ model_knn = joblib.load('models//pipeline_KNN.joblib')
 #shap_explainer = pickle.load(open("explainer//LR_shap_values.pkl", "rb"))
 LR_explainer = pickle.load(open("models//LR_explainer.pkl", "rb"))
 
-# test data
+# test and train data
 data_test_app = pd.read_csv('data_API/X_test_app_sample.csv.zip')
 data_test_app = data_test_app.drop(['Unnamed: 0'], axis= 1)
 data_client_infos = pd.read_csv('data_API/data_client_infos.csv.zip')
@@ -46,6 +47,10 @@ data_exploration = data_exploration.drop(['Unnamed: 0'], axis= 1)
 data_train_app = pd.read_csv('data_API/x_train_app.csv.zip')
 data_train_app = data_train_app.drop(['Unnamed: 0'], axis= 1)
 
+# description of features
+description = pd.read_csv('data_API/description.csv', encoding= 'unicode_escape')
+description = description.drop(['Unnamed: 0', 'Special'], axis=1)
+
 feats = [f for f in data_test_app.columns if f not in ['SK_ID_CURR', 'TARGET']]
 x_test = data_test_app[feats]
 x_train = data_train_app[feats]
@@ -54,6 +59,11 @@ x_train = data_train_app[feats]
 id_clients = data_test_app["SK_ID_CURR"].sort_values()
 id_clients = id_clients.values
 id_clients = pd.DataFrame(id_clients)
+
+# list of features
+ls_features = description["Row"]
+ls_features = ls_features.values
+ls_features = pd.DataFrame(ls_features)
 
 with header:
     st.title('Welcome to this Dashboard')
@@ -109,14 +119,20 @@ with dataset:
         if visualization == "Data description":
             st.markdown(" #### Data description :")
             st.write(data_exploration.head(3))
-            dataframe_description = Image.open("data_API/home_credit.png")
-            st.image(dataframe_description, width=800)
+
+            desc_feat = st.selectbox("Select feature", ls_features)
+            if st.button('submit'):
+                desc = description[description.Row==desc_feat].reset_index()
+                st.write(desc["Description"][0])
+            if st.checkbox('Show the description of the different tables'):
+                img_description = Image.open("data_API/home_credit.png")
+                st.image(img_description, width=800)
         elif visualization == "Univariate analysis":
             # Exploration univariée des variables
-            st.markdown('#### Univariate analysis of variables :')
+            st.markdown('#### Univariate analysis of features :')
             variables = ['Age', 'Gender', 'Family status', "Education type", "Working years", "Income type",
                          "Total income amount", "Contract type", "Credit amount", "Annuity amount"]
-            features = st.multiselect("The variables to be displayed:", variables)
+            features = st.multiselect("The features to be displayed:", variables)
             for feature in features:
                 # Set the style of plots
                 plt.style.use('seaborn')
@@ -263,7 +279,7 @@ with dataset:
                 df = df.append(data_train_client, ignore_index=True)
             df["SK_ID_CURR"] = id_client_train.loc[:, 0]
 
-            st.markdown('#### Bivariate analysis of variables :')
+            st.markdown('#### Bivariate analysis of features :')
             if st.checkbox("Bivariate analysis (customers\' income - credit amount)"):
                 st.write('<u> Customers\' income - credit amount </u>', unsafe_allow_html=True)
                 fig = plt.figure(figsize=(8, 6))
@@ -391,7 +407,7 @@ with model_trainig:
 
 with model_explainer:
     st.header('Model explanation ')
-    st.markdown("<u>Interpretation of the model - Local and global importance of variables :</u>", unsafe_allow_html=True)
+    st.markdown("<u>Interpretation of the model - Local and global importance of features :</u>", unsafe_allow_html=True)
     number = st.slider("Select the number of features...", 5, 100, 10)
     x_test_std = model_LR['scaler'].transform(x_test)
     LR_shap_values = LR_explainer(x_test_std)
