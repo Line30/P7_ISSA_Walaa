@@ -28,14 +28,10 @@ model_trainig = st.container()
 model_explainer = st.container()
 similar_clients = st.container()
 
-
 # Load the joblib model LR
 model_LR = joblib.load(open("models//LR_pipeline.joblib", "rb"))
 # Load the joblib model KNN
 model_knn = joblib.load('models//pipeline_KNN.joblib')
-# load the pickle shap explainer
-#shap_explainer = pickle.load(open("explainer//LR_shap_values.pkl", "rb"))
-LR_explainer = pickle.load(open("models//LR_explainer.pkl", "rb"))
 
 # test and train data
 data_test_app = pd.read_csv('data_API/X_test_app_sample.csv.zip')
@@ -408,22 +404,27 @@ with model_trainig:
 with model_explainer:
     st.header('Model explanation ')
     st.markdown("<u>Interpretation of the model - Local and global importance of features :</u>", unsafe_allow_html=True)
-    number = st.slider("Select the number of features...", 5, 100, 10)
     x_test_std = model_LR['scaler'].transform(x_test)
+    # load the pickle shap explainer
+    # shap_explainer = pickle.load(open("explainer//LR_shap_values.pkl", "rb"))
+    #LR_explainer = pickle.load(open("models//LR_explainer.pkl", "rb"))
+    LR_explainer = shap.LinearExplainer(model_LR['regressor'], x_test_std)
     LR_shap_values = LR_explainer(x_test_std)
 
     if st.checkbox("Local interpretation of the model"):
+        number_local = st.slider("Select the number of features...", 5, 100, 10, key=1)
         data_selected_client_std = model_LR['scaler'].transform(data_selected_client)
         x_local = pd.DataFrame(data_selected_client_std, columns=x_test.columns)
         client_shap_values = LR_explainer(x_local)
         fig = plt.figure(figsize=(12, 12))
-        shap.plots.waterfall(client_shap_values[0], max_display=number)
+        shap.plots.waterfall(client_shap_values[0], max_display=number_local)
         st.pyplot(fig)
 
     if st.checkbox("Global interpretation of the model"):
+        number_global = st.slider("Select the number of features...", 5, 100, 10, key=2)
         x_global = pd.DataFrame(x_test_std, columns=x_test.columns)
         fig = plt.figure(figsize=(12, 12))
-        shap.summary_plot(LR_shap_values, x_global, plot_type="bar", max_display=number)
+        shap.summary_plot(LR_shap_values, x_global, plot_type="bar", max_display=number_global)
         st.pyplot(fig)
 
 with similar_clients:
