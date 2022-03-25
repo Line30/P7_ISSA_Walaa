@@ -1,0 +1,12 @@
+gunicorn
+requests
+Flask
+shap
+pandas
+plotly
+plotly-express
+seaborn
+numpy
+scikit-learn
+joblib
+imbalanced-learn
