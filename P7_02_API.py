@@ -41,6 +41,42 @@ def home():
     response.mimetype = "text/plain"
     return response
 
+@app.route("/load_data", methods=["GET"])  # charger les id d'un client sélectionné
+def load_data():
+    return id_clients_test.to_json(orient='values')
+
+#permet de charger le score calculé des clients
+@app.route("/load_data_predict", methods=["GET"])
+def load_data_predict():
+    score=[]
+    df=pd.DataFrame()
+    id_client = data_test_app["SK_ID_CURR"].values
+    id_client = pd.DataFrame(id_client)
+    for id in id_client.loc[:,0]:
+        idx=data_test_app.loc[data_test_app["SK_ID_CURR"] ==float (id)].index
+        data_client = x_test.iloc[idx]
+        prediction = model_LR.predict_proba(data_client)
+        prediction = prediction[0].tolist()
+        score.append(prediction[1])
+        data_client['score']=prediction[1]
+        df = df.append(data_client, ignore_index=True)
+    df["SK_ID_CURR"]=id_client.loc[:,0]
+    response = json.loads(df.to_json(orient='index'))
+    return jsonify(response)
+
+
+# prédit le score de faillite d'un client sélectionné
+@app.route("/predict", methods=["GET"])
+def predict():
+    id = request.args.get('id_selected', default=id_clients_test.loc[0, :], type=int)
+    idx = data_test_app.loc[data_test_app["SK_ID_CURR"] == float(id)].index
+    data_client = x_test.iloc[idx]
+    prediction = model_LR.predict_proba(data_client)
+    prediction = prediction[0].tolist()
+    score = prediction[1]*100
+    score = round(score, 2)
+    return jsonify('Probability of customer bankruptcy risk : {} % '.format(score))
+
 if __name__ == '__main__':
     app.run(debug=True)
 
